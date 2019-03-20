@@ -1,0 +1,15 @@
+[Unit]
+Description=SenseHatService
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/scripts/sensehat
+ExecStart=/home/pi/scripts/sensehat/sensehat.sh
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
