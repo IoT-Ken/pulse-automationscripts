@@ -2,10 +2,10 @@
 #############################################################################
 # Filename: sensehat.sh
 # Date Created: 03/15/19
-# Date Modified: 03/19/19
+# Date Modified: 04/07/19
 # Author: Parth Trivedi 
 #
-# Version 1.2
+# Version 1.3
 #
 # Description: Script called by the sensehat service to gather information
 #              necessary to send to Pulse as Metrics (SenseHat) and Custom
@@ -17,13 +17,19 @@
 #        ./iotc-agent-cli enroll --device-id=<device Id> --parent-id=<parent Id>
 #
 # Version history:
+# 1.3 - Ken Osborn: Added While Loop instead of Sleep command to avoid having
+#                   systemd constantly restarting the service. The service will
+#                   still attempt restart if it crashes.
 # 1.2 - Ken Osborn: Added Application Checks (SenseHat Service Status) and
 #                   Pulse instrumentation.
 # 1.1 - Ken Osborn: Re-named script.  Added additional SenseHat and uptime 
 #                   capabilities.
 # 1.0 - Parth Trivedi: First version of the script.
 #############################################################################
+AGENTBINPATH="/opt/vmware/iotc-agent/bin/"
+AGENTDATAPATH="/opt/vmware/iotc-agent/data/data/"
 
+while true; do
 # Set and Get Python Return variables for Temperature, Humidity and Barometric Pressure
 SENSEHATTEMP=$(/usr/bin/python3 /home/pi/scripts/sensehat/temperature.py)
 SENSEHATHUMIDITY=$(/usr/bin/python3 /home/pi/scripts/sensehat/humidity.py)
@@ -34,7 +40,7 @@ SENSEHATPRESSURE=$(/usr/bin/python3 /home/pi/scripts/sensehat/pressure.py)
 UP=$(uptime -p | sed -e 's/ /-/g' | sed -e 's/,-/,/g')
 
 # Set Gateway and SenseHat Device Variables by retrieving them from /opt/vmware/iotc-agent/data/data/deviceIDs.data 
-RPIDEVICEID=$(cat -v /opt/vmware/iotc-agent/data/data/deviceIds.data | awk -F '^' '{print $1}' | awk -F '@' '{print $1}')
+RPIDEVICEID=$(cat ${AGENTDATAPATH}deviceIds.data | awk -F '^' '{print $1}')
 SENSEHATDEVICEID=$(cat -v /opt/vmware/iotc-agent/data/data/deviceIds.data | awk -F '^' '{print $2}' | awk -F '@' '{print $2}')
 
 # Utilize iotc-agent-cli to send metrics and properties to Pulse
@@ -45,15 +51,17 @@ sudo /opt/vmware/iotc-agent/bin/iotc-agent-cli send-properties --device-id=$RPID
 sudo /opt/vmware/iotc-agent/bin/iotc-agent-cli send-properties --device-id=$SENSEHATDEVICEID --key=Uptime --value=$UP
 
 # Check SenseHat Service Status and update Pulse System Property
-SERVICESTATUS=$(systemctl show -p ActiveState --value sensehatapp)
-sudo /opt/vmware/iotc-agent/bin/iotc-agent-cli send-properties --device-id=$RPIDEVICEID --key="app-sensehat-service" --value=$SERVICESTATUS
+#SERVICESTATUS=$(systemctl show -p ActiveState --value sensehatapp)
+#sudo /opt/vmware/iotc-agent/bin/iotc-agent-cli send-properties --device-id=$RPIDEVICEID --key="app-sensehat-service" --value=$SERVICESTATUS
 
 # Update Pulse Application Monitoring Boolean Metric
-if [ $SERVICESTATUS = "active" ]; then
- sudo /opt/vmware/iotc-agent/bin/iotc-agent-cli send-metric --device-id=$RPIDEVICEID --name=SenseHatService-Runstate --type=boolean --value="true"
-else
- sudo /opt/vmware/iotc-agent/bin/iotc-agent-cli send-metric --device-id=$RPIDEVICEID --name=SenseHatService-Runstate --type=boolean --value="false"
-fi
+#if [ $SERVICESTATUS = "active" ]; then
+# sudo /opt/vmware/iotc-agent/bin/iotc-agent-cli send-metric --device-id=$RPIDEVICEID --name=SenseHatService-Runstate --type=boolean --value="true"
+#else
+# sudo /opt/vmware/iotc-agent/bin/iotc-agent-cli send-metric --device-id=$RPIDEVICEID --name=SenseHatService-Runstate --type=boolean --value="false"
+#fi
 
-# Configure Collection Interval
-sleep 5
+# Configure While Loop Interval
+sleep 30
+done
+
